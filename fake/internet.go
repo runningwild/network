@@ -39,7 +39,7 @@ func init() {
 	network.RegisterInternet("fake", func() network.Internet { return MakeInternet() })
 }
 
-func (in *Internet) GetNetwork() (int, network.Network) {
+func (in *Internet) MakeNetwork() (int, network.Network) {
 	in.nets.Lock()
 	defer in.nets.Unlock()
 	in.nets.nextHost++
@@ -169,6 +169,10 @@ func (net *Network) routine() {
 	}
 }
 
+func (net *Network) Resolve(host, port int) network.Addr {
+	return Addr{host, port}
+}
+
 func (net *Network) Forward(external int, internal network.Addr) error {
 	internalConv, ok := internal.(Addr)
 	if !ok {
@@ -261,7 +265,7 @@ func (c *Conn) File() (f *os.File, err error) {
 func (c *Conn) LocalAddr() network.Addr {
 	return c.localAddr
 }
-func (c *Conn) Read(b []byte) (int, network.Addr, error) {
+func (c *Conn) ReadFrom(b []byte) (int, network.Addr, error) {
 	p := <-c.fromInternet
 	copy(b, p.Data)
 	n := len(p.Data)
@@ -269,6 +273,10 @@ func (c *Conn) Read(b []byte) (int, network.Addr, error) {
 		n = len(b)
 	}
 	return n, p.Src, nil
+}
+func (c *Conn) Read(b []byte) (int, error) {
+	n, _, err := c.ReadFrom(b)
+	return n, err
 }
 func (c *Conn) RemoteAddr() network.Addr {
 	return c.remoteAddr

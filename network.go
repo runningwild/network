@@ -27,13 +27,14 @@ func GetInternet(network string) Internet {
 }
 
 type Internet interface {
-	GetNetwork() (int, Network)
+	MakeNetwork() (int, Network)
 }
 
 type Network interface {
 	Dial(laddr, raddr Addr) (Conn, error)
 	Listen(laddr Addr) (Conn, error)
 	Forward(external int, internal Addr) error
+	Resolve(host, port int) Addr
 }
 type Addr interface {
 	Network() string // name of the network
@@ -43,7 +44,8 @@ type Conn interface {
 	Close() error
 	File() (f *os.File, err error)
 	LocalAddr() Addr
-	Read(b []byte) (int, Addr, error)
+	Read(b []byte) (int, error)
+	ReadFrom(b []byte) (int, Addr, error)
 	RemoteAddr() Addr
 	SetDeadline(t time.Time) error
 	SetReadBuffer(bytes int) error
