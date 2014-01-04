@@ -3,6 +3,7 @@ package fake
 import (
 	"fmt"
 	"github.com/runningwild/network"
+	"math/rand"
 	"os"
 	"sync"
 	"time"
@@ -163,7 +164,7 @@ func (net *Network) routine() {
 				continue
 			}
 			go func(c *Conn, p packet) {
-				conn.fromInternet <- p
+				c.fromInternet <- p
 			}(conn, p)
 		}
 	}
@@ -190,7 +191,16 @@ func (net *Network) Forward(external int, internal network.Addr) error {
 func (net *Network) Dial(laddr, raddr network.Addr) (network.Conn, error) {
 	var laddrConv Addr
 	if laddr == nil {
-		laddrConv = Addr{host: net.host}
+		laddrConv.host = net.host
+		net.conns.Lock()
+		for {
+			laddrConv.port = rand.Intn(1000)
+			_, ok := net.conns.addrToConn[laddrConv]
+			if !ok {
+				break
+			}
+		}
+		net.conns.Unlock()
 	} else {
 		var ok bool
 		laddrConv, ok = laddr.(Addr)
