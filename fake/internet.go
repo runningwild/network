@@ -10,7 +10,8 @@ import (
 )
 
 type Internet struct {
-	nets struct {
+	packetLoss float64
+	nets       struct {
 		sync.Mutex
 
 		nextHost      int
@@ -18,7 +19,14 @@ type Internet struct {
 	}
 }
 
+func (in *Internet) SetPacketLoss(packetLoss float64) {
+	in.packetLoss = packetLoss
+}
+
 func (in *Internet) SendPacket(p packet) {
+	if rand.Float64() < in.packetLoss {
+		return
+	}
 	in.nets.Lock()
 	defer in.nets.Unlock()
 	network, ok := in.nets.hostToNetwork[p.Dst.host]
@@ -40,13 +48,13 @@ func init() {
 	network.RegisterInternet("fake", func() network.Internet { return MakeInternet() })
 }
 
-func (in *Internet) MakeNetwork() (int, network.Network) {
+func (in *Internet) MakeNetwork() (string, network.Network) {
 	in.nets.Lock()
 	defer in.nets.Unlock()
 	in.nets.nextHost++
 	network := makeNetwork(in, in.nets.nextHost)
 	in.nets.hostToNetwork[in.nets.nextHost] = network
-	return in.nets.nextHost, network
+	return fmt.Sprintf("%d", in.nets.nextHost), network
 }
 
 type Addr struct {
@@ -170,8 +178,13 @@ func (net *Network) routine() {
 	}
 }
 
-func (net *Network) Resolve(host, port int) network.Addr {
-	return Addr{host, port}
+func (net *Network) Resolve(host string, port int) (network.Addr, error) {
+	var hostInt int
+	_, err := fmt.Sscanf(host, "%d", &hostInt)
+	if err != nil {
+		return nil, err
+	}
+	return Addr{hostInt, port}, nil
 }
 
 func (net *Network) Forward(external int, internal network.Addr) error {
