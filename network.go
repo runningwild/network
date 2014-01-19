@@ -53,4 +53,5 @@ type Conn interface {
 	SetWriteBuffer(bytes int) error
 	SetWriteDeadline(t time.Time) error
 	Write(b []byte) (int, error)
+	WriteTo(b []byte, raddr Addr) (int, error)
 }

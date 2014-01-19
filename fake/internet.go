@@ -180,9 +180,24 @@ func (net *Network) routine() {
 
 func (net *Network) Resolve(host string, port int) (network.Addr, error) {
 	var hostInt int
-	_, err := fmt.Sscanf(host, "%d", &hostInt)
-	if err != nil {
-		return nil, err
+	if host == "" {
+		hostInt = net.host
+	} else {
+		_, err := fmt.Sscanf(host, "%d", &hostInt)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if port == 0 {
+		net.conns.Lock()
+		for {
+			port = rand.Intn(1000)
+			_, ok := net.conns.addrToConn[Addr{hostInt, port}]
+			if !ok {
+				break
+			}
+		}
+		net.conns.Unlock()
 	}
 	return Addr{hostInt, port}, nil
 }
@@ -320,12 +335,19 @@ func (c *Conn) SetWriteDeadline(t time.Time) error {
 	return nil
 }
 func (c *Conn) Write(b []byte) (int, error) {
+	return c.WriteTo(b, c.remoteAddr)
+}
+func (c *Conn) WriteTo(b []byte, raddr network.Addr) (int, error) {
 	buffer := make([]byte, len(b))
 	copy(buffer, b)
+	raddrResolved, err := ResolveAddr(raddr.String())
+	if err != nil {
+		return 0, err
+	}
 	go func() {
 		c.net.toInternet <- packet{
 			Src:  c.localAddr,
-			Dst:  c.remoteAddr,
+			Dst:  raddrResolved,
 			Data: buffer,
 		}
 	}()

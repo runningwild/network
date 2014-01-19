@@ -22,12 +22,28 @@ func (internet *Internet) MakeNetwork() (string, network.Network) {
 
 type Network struct{}
 
-func (n *Network) Dial(laddr, raddr network.Addr) (network.Conn, error) {
-	laddrResolved, err := net.ResolveUDPAddr(laddr.Network(), laddr.String())
+func simpleResolve(addr network.Addr) (*net.UDPAddr, error) {
+	var stringNetwork, stringAddr string
+	if addr == nil {
+		stringNetwork = "udp4"
+		stringAddr = ""
+	} else {
+		stringNetwork = addr.Network()
+		stringAddr = addr.String()
+	}
+	addrResolved, err := net.ResolveUDPAddr(stringNetwork, stringAddr)
 	if err != nil {
 		return nil, err
 	}
-	raddrResolved, err := net.ResolveUDPAddr(raddr.Network(), raddr.String())
+	return addrResolved, nil
+}
+
+func (n *Network) Dial(laddr, raddr network.Addr) (network.Conn, error) {
+	laddrResolved, err := simpleResolve(laddr)
+	if err != nil {
+		return nil, err
+	}
+	raddrResolved, err := simpleResolve(raddr)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +51,7 @@ func (n *Network) Dial(laddr, raddr network.Addr) (network.Conn, error) {
 	return wrapConn{conn}, err
 }
 func (n *Network) Listen(laddr network.Addr) (network.Conn, error) {
-	laddrResolved, err := net.ResolveUDPAddr(laddr.Network(), laddr.String())
+	laddrResolved, err := simpleResolve(laddr)
 	if err != nil {
 		return nil, err
 	}
@@ -60,5 +76,12 @@ func (wc wrapConn) ReadFrom(b []byte) (int, network.Addr, error) {
 	return wc.UDPConn.ReadFrom(b)
 }
 func (wc wrapConn) RemoteAddr() network.Addr {
-	return wc.RemoteAddr()
+	return wc.UDPConn.RemoteAddr()
+}
+func (wc wrapConn) WriteTo(b []byte, raddr network.Addr) (int, error) {
+	raddrResolved, err := simpleResolve(raddr)
+	if err != nil {
+		return 0, err
+	}
+	return wc.UDPConn.WriteTo(b, raddrResolved)
 }
