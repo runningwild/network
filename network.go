@@ -27,17 +27,17 @@ func GetInternet(network string) Internet {
 }
 
 type Internet interface {
-	MakeNetwork() (int, Network)
+	MakeNetwork() (string, Network)
 }
 
 type Network interface {
 	Dial(laddr, raddr Addr) (Conn, error)
 	Listen(laddr Addr) (Conn, error)
 	Forward(external int, internal Addr) error
-	Resolve(host, port int) Addr
+	Resolve(host string, port int) (Addr, error)
 }
 type Addr interface {
-	Network() string // name of the network
+	Network() string // name of the network ('fake' or 'udp')
 	String() string  // string form of address
 }
 type Conn interface {
