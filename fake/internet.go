@@ -10,10 +10,11 @@ import (
 )
 
 type Internet struct {
-	packetLoss float64
-	nets       struct {
-		sync.Mutex
+	packetLoss    float64
+	maxPacketSize int
 
+	nets struct {
+		sync.Mutex
 		nextHost      int
 		hostToNetwork map[int]*Network
 	}
@@ -23,9 +24,16 @@ func (in *Internet) SetPacketLoss(packetLoss float64) {
 	in.packetLoss = packetLoss
 }
 
+func (in *Internet) SetMaxPacketSize(maxPacketSize int) {
+	in.maxPacketSize = maxPacketSize
+}
+
 func (in *Internet) SendPacket(p packet) {
 	if rand.Float64() < in.packetLoss {
 		return
+	}
+	if in.maxPacketSize > 0 && len(p.Data) > in.maxPacketSize {
+		p.Data = p.Data[0:in.maxPacketSize]
 	}
 	in.nets.Lock()
 	defer in.nets.Unlock()
